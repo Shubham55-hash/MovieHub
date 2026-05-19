@@ -1,97 +1,103 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 🎬 Movie Explorer
 
-# Getting Started
+A production-grade **Movie Explorer** mobile application built with **React Native CLI + TypeScript**, consuming the [TMDB API](https://developer.themoviedb.org).
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+## App Overview
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+| Screen | Description |
+|---|---|
+| **Home** | Browses popular movies with infinite scroll and pull-to-refresh. Shows cached data instantly on cold start while re-fetching silently in the background. |
+| **Search** | Searches movies by title with 400ms debounced input, paginated results, and a recent searches chip list. |
+| **Detail** | Shows full movie details — poster, backdrop, tagline, genres, runtime, rating, and overview. Uses Redux cache for instant data before the extended API response arrives. |
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+---
 
-```sh
-# Using npm
-npm start
+## Setup & Run
 
-# OR using Yarn
-yarn start
+### Prerequisites
+- Node.js ≥ 18
+- JDK 17
+- Android Studio with a configured emulator (or a physical device)
+- Xcode (macOS only, for iOS)
+
+### Steps
+
+```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd MovieExplorer
+
+# 2. Install dependencies
+npm install
+
+# 3. Add your TMDB API key (see Environment Variables section)
+
+# 4a. Run on Android
+npx react-native run-android
+
+# 4b. Run on iOS (macOS only)
+cd ios && pod install && cd ..
+npx react-native run-ios
 ```
 
-## Step 2: Build and run your app
+---
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## Environment Variables
 
-### Android
+The TMDB API key is currently stored in `src/constants/api.ts`. For production use, set it via a `.env` file with `react-native-config`:
 
-```sh
-# Using npm
-npm run android
+1. Install: `npm install react-native-config`
+2. Create `.env` in the project root:
+   ```
+   TMDB_API_KEY=your_api_key_here
+   ```
+3. Update `src/constants/api.ts`:
+   ```ts
+   import Config from 'react-native-config';
+   export const TMDB_API_KEY = Config.TMDB_API_KEY ?? '';
+   ```
+4. For Android, follow the `react-native-config` android setup to expose variables to `BuildConfig`.
 
-# OR using Yarn
-yarn android
-```
+> **Get your API key at:** https://www.themoviedb.org/settings/api
 
-### iOS
+---
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Architecture Decisions
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### Why Redux Toolkit over Context API?
+Redux Toolkit (RTK) provides a centralized, predictable state container with first-class support for async operations (`createAsyncThunk`), memoized selectors (`createSelector`), and middleware. Context API re-renders all consumers on any state change — unsuitable for a large movie list with frequent pagination updates.
 
-```sh
-bundle install
-```
+### Why custom persistence middleware over redux-persist?
+`redux-persist` is a large, opinionated library that serializes the entire store and requires rehydration actions that conflict with RTK's `createSlice` patterns. The custom `persistenceMiddleware` is ~20 lines of targeted code that only persists what matters: the movie list and recent searches. This gives complete control, zero magic, and no bundle-size overhead.
 
-Then, and every time you update your native dependencies, run:
+### Why `getItemLayout`?
+`FlatList` normally measures each item's height at render time, causing layout recalculations as the user scrolls. By implementing `getItemLayout` with fixed card heights, RN can compute scroll positions instantly — enabling accurate `scrollToIndex`, better jump-scrolling, and reduced jank during rapid scrolling through hundreds of items.
 
-```sh
-bundle exec pod install
-```
+### How stale-while-revalidate works
+On app start, `App.tsx` reads `AsyncStorage` synchronously (in effect) and immediately hydrates the Redux store with cached movies. The UI renders cached content within milliseconds. Simultaneously, if the cached data is older than 10 minutes, a background fetch is dispatched. When it completes, the list updates seamlessly — users see data instantly and get fresh data without a loading screen.
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+---
 
-```sh
-# Using npm
-npm run ios
+## Known Limitations
 
-# OR using Yarn
-yarn ios
-```
+- No token-based auth or user accounts
+- Movie images are not cached to disk (uses in-memory React Native `Image` cache only)
+- No offline indicator banner (NetInfo integration omitted for brevity)
+- Detail screen does not pre-check network before fetching extended data
+- Pagination deduplication uses `Array.filter` — O(n²) for very large lists; a `Set`-based approach would be optimal
+- `react-native-vector-icons` is installed but tab bar uses emoji icons to avoid the native linking setup requirement
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## What I'd Improve with More Time
 
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+1. **Unit & Integration Tests** — Jest + React Native Testing Library for slices, hooks, and screen render tests; 80%+ coverage target
+2. **E2E Tests** — Detox test suite covering the full browse → search → detail navigation flow
+3. **Image Caching** — Replace RN's `Image` with `react-native-fast-image` for persistent disk-level caching with priority queuing
+4. **CI/CD Pipeline** — GitHub Actions workflow: lint → type-check → test → build APK/IPA on PRs
+5. **Offline Network Banner** — `@react-native-community/netinfo` integration to show a banner when the device is offline and gracefully block API dispatches
+6. **Skeleton Loaders** — Animated placeholder cards using `Animated.loop` instead of `ActivityIndicator` for a more polished loading experience
+7. **Prefetching** — Trigger page N+1 fetch when user scrolls past 60% of current results (before `onEndReached` fires)
+8. **Axios Cancel Tokens** — Abort in-flight search requests when query changes or screen unmounts to prevent race conditions and stale data renders
