@@ -11,22 +11,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Apply React Native compatibility patch
+        run: npx patch-package --error-on-fail
+
+      - name: Verify patched React Native header
+        run: grep -n 'std::to_string(dimension.value) + "%"' node_modules/react-native/ReactCommon/react/renderer/core/graphicsConversions.h
 
       - name: Create .env file for build
         run: echo "TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}" > .env
